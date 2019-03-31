@@ -5,7 +5,6 @@
 package opcua
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gopcua/opcua/id"
@@ -36,13 +35,13 @@ func (n *Node) NodeClass() (ua.NodeClass, error) {
 }
 
 // AccessLevel returns the access level of the node.
-func (n *Node) AccessLevel() (byte, error) {
+func (n *Node) AccessLevel() (ua.AccessLevelType, error) {
 	v, err := n.Attribute(ua.AttributeIDAccessLevel)
 	if err != nil {
 		return 0, err
 	}
-	fmt.Printf("value: %#v\n", v)
-	return v.Value.(byte), nil
+	//fmt.Printf("value: %#v\n", v)
+	return ua.AccessLevelType(v.Value.(byte)), nil
 }
 
 // BrowseName returns the browse name of the node.
@@ -88,8 +87,20 @@ func (n *Node) Attribute(attrID ua.AttributeID) (*ua.Variant, error) {
 	if res.Results[0].Status != ua.StatusOK {
 		return nil, res.Results[0].Status
 	}
-	fmt.Printf("attr: %#v\n", res.Results[0])
 	return res.Results[0].Value, nil
+}
+
+func (n *Node) Attributes(attrID ...ua.AttributeID) ([]*ua.DataValue, error) {
+	req := &ua.ReadRequest{}
+	for _, id := range attrID {
+		rv := &ua.ReadValueID{NodeID: n.ID, AttributeID: id}
+		req.NodesToRead = append(req.NodesToRead, rv)
+	}
+	res, err := n.c.Read(req)
+	if err != nil {
+		return nil, err
+	}
+	return res.Results, nil
 }
 
 func (n *Node) Children(refs uint32, mask ua.NodeClass) ([]*Node, error) {
@@ -102,9 +113,6 @@ func (n *Node) Children(refs uint32, mask ua.NodeClass) ([]*Node, error) {
 func (n *Node) ReferencedNodes(refs uint32, dir ua.BrowseDirection, mask ua.NodeClass, includeSubtypes bool) ([]*Node, error) {
 	if refs == 0 {
 		refs = id.References
-	}
-	if dir == 0 {
-		dir = ua.BrowseDirectionBoth
 	}
 	var nodes []*Node
 	res, err := n.References(refs, dir, mask, includeSubtypes)
@@ -124,16 +132,13 @@ func (n *Node) References(refType uint32, dir ua.BrowseDirection, mask ua.NodeCl
 	if refType == 0 {
 		refType = id.References
 	}
-	if dir == 0 {
-		dir = ua.BrowseDirectionBoth
-	}
 	if mask == 0 {
 		mask = ua.NodeClassAll
 	}
 
 	desc := &ua.BrowseDescription{
 		NodeID:          n.ID,
-		BrowseDirection: ua.BrowseDirectionBoth,
+		BrowseDirection: dir,
 		ReferenceTypeID: ua.NewNumericNodeID(0, refType),
 		IncludeSubtypes: includeSubtypes,
 		NodeClassMask:   uint32(mask),
