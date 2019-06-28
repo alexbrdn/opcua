@@ -351,7 +351,9 @@ func (s *SecureChannel) Receive(ctx context.Context) Response {
 			}
 
 			// todo: validate request ID / check that it is increasing correctly
+			s.mu.Lock()
 			s.cfg.RequestID = reqid
+			s.mu.Unlock()
 
 			switch svc.(type) {
 			case *ua.OpenSecureChannelRequest:
