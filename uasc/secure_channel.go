@@ -188,7 +188,6 @@ func (s *SecureChannel) sendAsyncWithTimeout(svc interface{}, authToken *ua.Node
 	// encode the message
 	m := NewMessage(svc, typeID, s.cfg)
 	reqid := m.SequenceHeader.RequestID
-	s.mu.Unlock()
 	b, err := m.Encode()
 	if err != nil {
 		return nil, reqid, err
@@ -205,6 +204,7 @@ func (s *SecureChannel) sendAsyncWithTimeout(svc interface{}, authToken *ua.Node
 	if _, err := s.c.Write(b); err != nil {
 		return nil, reqid, err
 	}
+	s.mu.Unlock()
 	debug.Printf("uasc %d/%d: send %T with %d bytes", s.c.ID(), reqid, svc, len(b))
 
 	// register the handler if a callback was passed
